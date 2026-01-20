@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage Inscriptions</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-5">
+    <h2>Manage Inscriptions (ADMIN)</h2>
+    <p><a href="/welcome.html">Back to Dashboard</a></p>
+
+    <div class="alert alert-info">
+        Inscriptions are managed automatically from groupes. Add/remove students or courses in a groupe to update inscriptions.
+    </div>
+
+    <table class="table table-striped mt-4">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Date</th>
+                <th>Etudiant</th>
+                <th>Course</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="inscriptionList">
+            <tr><td colspan="5" class="text-center">Loading inscriptions...</td></tr>
+        </tbody>
+    </table>
+    <div id="message" class="mt-3"></div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', fetchInscriptions);
+
+    async function fetchInscriptions() {
+        const listBody = document.getElementById('inscriptionList');
+        const messageDiv = document.getElementById('message');
+
+        try {
+            const response = await fetch('/inscriptions/', { credentials: 'include' });
+            if (response.ok) {
+                const inscriptions = await response.json();
+                listBody.innerHTML = '';
+
+                if (inscriptions.length === 0) {
+                    listBody.innerHTML = '<tr><td colspan="5" class="text-center">No inscriptions found.</td></tr>';
+                    return;
+                }
+
+                inscriptions.forEach(insc => {
+                    const row = listBody.insertRow();
+                    const date = insc.dateInscription ? new Date(insc.dateInscription).toLocaleDateString() : 'N/A';
+                    const etu = insc.etudiant ? `${insc.etudiant.nom} ${insc.etudiant.prenom}` : 'N/A';
+                    const cours = insc.cours ? `${insc.cours.code} - ${insc.cours.titre}` : 'N/A';
+                    row.insertCell().textContent = insc.id;
+                    row.insertCell().textContent = date;
+                    row.insertCell().textContent = etu;
+                    row.insertCell().textContent = cours;
+                    row.insertCell().innerHTML = `
+                        <button class="btn btn-sm btn-danger" onclick="deleteInscription(${insc.id})">Cancel</button>
+                    `;
+                });
+            } else {
+                messageDiv.innerHTML = `<div class="alert alert-danger">Error loading inscriptions. Status: ${response.status}</div>`;
+                listBody.innerHTML = '';
+            }
+        } catch (error) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Network error fetching inscriptions.</div>';
+            console.error('Fetch error:', error);
+        }
+    }
+
+    async function deleteInscription(id) {
+        const messageDiv = document.getElementById('message');
+        messageDiv.innerHTML = '<div class="alert alert-warning">Manual cancellation is disabled. Update groupes instead.</div>';
+    }
+</script>
+</body>
+</html>

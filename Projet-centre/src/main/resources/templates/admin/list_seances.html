@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Seances</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-5">
+    <h2>Planifier des Seances</h2>
+    <p><a href="/welcome.html">Back to Dashboard</a></p>
+
+    <form id="seanceForm" class="mb-4">
+        <div class="form-row">
+            <div class="form-group col-md-3">
+                <label for="dateSeance">Date</label>
+                <input type="date" class="form-control" id="dateSeance" required>
+            </div>
+            <div class="form-group col-md-2">
+                <label for="heureDebut">Heure debut</label>
+                <input type="time" class="form-control" id="heureDebut" required>
+            </div>
+            <div class="form-group col-md-2">
+                <label for="heureFin">Heure fin</label>
+                <input type="time" class="form-control" id="heureFin" required>
+            </div>
+            <div class="form-group col-md-2">
+                <label for="salle">Salle</label>
+                <input type="text" class="form-control" id="salle" required>
+            </div>
+            <div class="form-group col-md-3">
+                <label for="coursSelect">Cours</label>
+                <select id="coursSelect" class="form-control" required></select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group col-md-4">
+                <label for="groupeSelect">Groupe (optionnel)</label>
+                <select id="groupeSelect" class="form-control">
+                    <option value="">-- None --</option>
+                </select>
+            </div>
+            <div class="form-group col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary">Planifier</button>
+            </div>
+        </div>
+    </form>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Date</th>
+                <th>Heure</th>
+                <th>Salle</th>
+                <th>Cours</th>
+                <th>Groupe</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="seanceList">
+            <tr><td colspan="7" class="text-center">Loading...</td></tr>
+        </tbody>
+    </table>
+    <div id="message" class="mt-3"></div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        await Promise.all([fetchCours(), fetchGroupes()]);
+        await fetchSeances();
+    });
+    document.getElementById('seanceForm').addEventListener('submit', createSeance);
+
+    async function fetchCours() {
+        const select = document.getElementById('coursSelect');
+        const response = await fetch('/cours/', { credentials: 'include' });
+        if (response.ok) {
+            const courses = await response.json();
+            courses.forEach(c => {
+                const option = document.createElement('option');
+                option.value = c.code;
+                option.textContent = `${c.code} - ${c.titre}`;
+                select.appendChild(option);
+            });
+        }
+    }
+
+    async function fetchGroupes() {
+        const select = document.getElementById('groupeSelect');
+        const response = await fetch('/groupes/', { credentials: 'include' });
+        if (response.ok) {
+            const groupes = await response.json();
+            groupes.forEach(g => {
+                const option = document.createElement('option');
+                option.value = g.id;
+                option.textContent = g.nom;
+                select.appendChild(option);
+            });
+        }
+    }
+
+    async function fetchSeances() {
+        const listBody = document.getElementById('seanceList');
+        const messageDiv = document.getElementById('message');
+        try {
+            const response = await fetch('/seances/', { credentials: 'include' });
+            if (response.ok) {
+                const seances = await response.json();
+                listBody.innerHTML = '';
+                if (seances.length === 0) {
+                    listBody.innerHTML = '<tr><td colspan="7" class="text-center">No seances found.</td></tr>';
+                    return;
+                }
+                seances.forEach(s => {
+                    const row = listBody.insertRow();
+                    row.insertCell().textContent = s.id;
+                    row.insertCell().textContent = s.dateSeance;
+                    row.insertCell().textContent = `${s.heureDebut} - ${s.heureFin}`;
+                    row.insertCell().textContent = s.salle;
+                    row.insertCell().textContent = s.cours ? `${s.cours.code} - ${s.cours.titre}` : '';
+                    row.insertCell().textContent = s.groupe ? s.groupe.nom : '';
+                    row.insertCell().innerHTML = `
+                        <button class="btn btn-sm btn-danger" onclick="deleteSeance(${s.id})">Delete</button>
+                    `;
+                });
+            } else {
+                messageDiv.innerHTML = `<div class="alert alert-danger">Error loading seances. Status: ${response.status}</div>`;
+            }
+        } catch (error) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Network error.</div>';
+        }
+    }
+
+    async function createSeance(e) {
+        e.preventDefault();
+        const messageDiv = document.getElementById('message');
+        const payload = {
+            dateSeance: document.getElementById('dateSeance').value,
+            heureDebut: document.getElementById('heureDebut').value,
+            heureFin: document.getElementById('heureFin').value,
+            salle: document.getElementById('salle').value,
+            cours: { code: document.getElementById('coursSelect').value },
+            groupe: document.getElementById('groupeSelect').value ? { id: parseInt(document.getElementById('groupeSelect').value, 10) } : null
+        };
+        try {
+            const response = await fetch('/seances/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                credentials: 'include'
+            });
+            if (response.ok) {
+                messageDiv.innerHTML = '<div class="alert alert-success">Seance added.</div>';
+                fetchSeances();
+            } else {
+                const errorText = await response.text();
+                messageDiv.innerHTML = `<div class="alert alert-danger">Creation failed: ${errorText || 'Server error'}</div>`;
+            }
+        } catch (error) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Network error.</div>';
+        }
+    }
+
+    async function deleteSeance(id) {
+        if (!confirm('Delete this seance?')) return;
+        const messageDiv = document.getElementById('message');
+        try {
+            const response = await fetch(`/seances/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            if (response.status === 204) {
+                messageDiv.innerHTML = '<div class="alert alert-success">Seance deleted.</div>';
+                fetchSeances();
+            } else {
+                const errorText = await response.text();
+                messageDiv.innerHTML = `<div class="alert alert-danger">Delete failed: ${errorText || 'Server error'}</div>`;
+            }
+        } catch (error) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Network error.</div>';
+        }
+    }
+</script>
+</body>
+</html>

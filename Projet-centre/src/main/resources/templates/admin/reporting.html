@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Reporting & Stats</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-5">
+    <h2>Reporting & Statistics</h2>
+    <p><a href="/welcome.html">Back to Dashboard</a></p>
+
+    <div class="card mb-4">
+        <div class="card-header">Moyenne d'un Etudiant</div>
+        <div class="card-body">
+            <div class="form-inline">
+                <select class="form-control mr-2" id="etudiantId">
+                    <option value="">-- Select Etudiant --</option>
+                    <option th:each="e : ${etudiants}"
+                            th:value="${e.id}"
+                            th:text="${e.nom + ' ' + e.prenom + ' (ID: ' + e.id + ')'}"></option>
+                </select>
+                <button class="btn btn-primary" onclick="fetchEtudiantAverage()">Get Moyenne</button>
+            </div>
+            <div id="etudiantAverage" class="mt-2"></div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">Taux de Reussite d'un Cours</div>
+        <div class="card-body">
+            <div class="form-inline">
+                <select class="form-control mr-2" id="coursCode">
+                    <option value="">-- Select Cours --</option>
+                    <option th:each="c : ${coursList}"
+                            th:value="${c.code}"
+                            th:text="${c.code + ' - ' + c.titre}"></option>
+                </select>
+                <button class="btn btn-primary" onclick="fetchCoursRate()">Get Taux</button>
+            </div>
+            <div id="coursRate" class="mt-2"></div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">Cours les plus suivis</div>
+        <div class="card-body">
+            <button class="btn btn-secondary mb-3" onclick="fetchTopCourses()">Refresh</button>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Titre</th>
+                        <th>Inscriptions</th>
+                    </tr>
+                </thead>
+                <tbody id="topCourses">
+                    <tr><td colspan="3" class="text-center">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">PDF Notes</div>
+        <div class="card-body">
+            <div class="form-inline">
+                <select class="form-control mr-2" id="pdfCoursCode">
+                    <option value="">-- All Cours --</option>
+                    <option th:each="c : ${coursList}"
+                            th:value="${c.code}"
+                            th:text="${c.code + ' - ' + c.titre}"></option>
+                </select>
+                <button class="btn btn-outline-primary" onclick="downloadPdf()">Download PDF</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', fetchTopCourses);
+
+    async function fetchEtudiantAverage() {
+        const id = document.getElementById('etudiantId').value;
+        const target = document.getElementById('etudiantAverage');
+        if (!id) return;
+        const response = await fetch(`/reports/etudiants/${id}/moyenne`, { credentials: 'include' });
+        if (response.ok) {
+            const data = await response.json();
+            target.textContent = `Moyenne: ${data.moyenne.toFixed(2)}`;
+        } else {
+            target.textContent = `Error: ${response.status}`;
+        }
+    }
+
+    async function fetchCoursRate() {
+        const code = document.getElementById('coursCode').value;
+        const target = document.getElementById('coursRate');
+        if (!code) return;
+        const response = await fetch(`/reports/cours/${code}/taux-reussite`, { credentials: 'include' });
+        if (response.ok) {
+            const data = await response.json();
+            target.textContent = `Taux de reussite: ${data.tauxReussite.toFixed(2)}%`;
+        } else {
+            target.textContent = `Error: ${response.status}`;
+        }
+    }
+
+    async function fetchTopCourses() {
+        const list = document.getElementById('topCourses');
+        const response = await fetch('/reports/cours/top?limit=5', { credentials: 'include' });
+        if (response.ok) {
+            const courses = await response.json();
+            list.innerHTML = '';
+            if (courses.length === 0) {
+                list.innerHTML = '<tr><td colspan="3" class="text-center">No data.</td></tr>';
+                return;
+            }
+            courses.forEach(c => {
+                const row = list.insertRow();
+                row.insertCell().textContent = c.code;
+                row.insertCell().textContent = c.titre;
+                row.insertCell().textContent = c.inscriptions;
+            });
+        } else {
+            list.innerHTML = `<tr><td colspan="3" class="text-center">Error ${response.status}</td></tr>`;
+        }
+    }
+
+    function downloadPdf() {
+        const code = document.getElementById('pdfCoursCode').value;
+        const url = code ? `/reports/notes/pdf?cours=${encodeURIComponent(code)}` : '/reports/notes/pdf';
+        window.location.href = url;
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="utf-8" />
+<title>Liste des Produits</title>
+<link rel="stylesheet" type="text/css"
+	href="../static/css/bootstrap.min.css"
+	th:href="@{/css/bootstrap.min.css}" />
+</head>
+<body>
+	<div class="container">
+		<div class="panel panel-default">
+			<div class="panel-heading">Confirmation</div>
+			<div class="panel-body">
+				<div class="form-group">
+					<label>ID:</label> <label th:text="${produit.id}"></label>
+				</div>
+				<div class="form-group">
+					<label>Désignation:</label> <label th:text="${produit.designation}"></label>
+				</div>
+				<div class="form-group">
+					<label>Prix:</label> <label th:text="${produit.prix}"></label>
+				</div>
+				<div class="form-group">
+					<label>Quantité:</label> <label th:text="${produit.quantite}"></label>
+				</div>
+				<div class="form-group">
+					<label>Date Achat:</label> <label th:text="${produit.dateAchat}"></label>
+				</div>
+				<p>
+    Catégorie :
+    <span th:text="${produit.categorie.libelle}"></span>
+</p>
+				
+				<p>
+    Actif :
+    <span th:text="${produit.actif ? 'Oui' : 'Non'}"></span>
+</p>
+				
+			</div>
+			<div class="panel-footer">----Gestion de stock---</div>
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add New Course</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-5">
+    <h2>Add New Course</h2>
+    <p><a href="/admin/courses">Back to Course List</a></p>
+
+    <form id="newCourseForm">
+        <div class="form-group">
+            <label for="titre">Title</label>
+            <input type="text" class="form-control" id="titre" required>
+        </div>
+        <div class="form-group">
+            <label for="formateur">Formateur (Select ID)</label>
+            <select class="form-control" id="formateur">
+                <option value="">-- Unassigned --</option>
+            </select>
+        </div>
+        <div class="form-group form-check">
+            <input type="checkbox" class="form-check-input" id="actif" checked>
+            <label class="form-check-label" for="actif">Active</label>
+        </div>
+        <button type="submit" class="btn btn-primary">Create Course</button>
+    </form>
+    
+    <div id="message" class="mt-3"></div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', fetchFormateurs);
+    document.getElementById('newCourseForm').addEventListener('submit', createCourse);
+    
+    // Function to fetch formateurs for the dropdown
+    async function fetchFormateurs() {
+        const select = document.getElementById('formateur');
+        try {
+            // Assuming /formateurs/ is a GET endpoint for all formateurs, accessible by ADMIN
+            const response = await fetch('/formateurs/', { credentials: 'include' });
+            if (response.ok) {
+                const formateurs = await response.json();
+                formateurs.forEach(f => {
+                    const option = document.createElement('option');
+                    option.value = f.id;
+                    option.textContent = `${f.nom} (ID: ${f.id})`;
+                    select.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching formateurs:', error);
+        }
+    }
+
+    async function createCourse(event) {
+        event.preventDefault();
+        const messageDiv = document.getElementById('message');
+        
+        const selectedFormateurId = document.getElementById('formateur').value;
+        
+        const newCourse = {
+            titre: document.getElementById('titre').value,
+            actif: document.getElementById('actif').checked,
+            // Only include formateur if selected
+            formateur: selectedFormateurId ? { id: selectedFormateurId } : null
+        };
+
+        try {
+            const response = await fetch('/cours/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newCourse),
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                messageDiv.innerHTML = '<div class="alert alert-success">Course created successfully! Redirecting...</div>';
+                // Wait a moment then redirect back to the list
+                setTimeout(() => window.location.href = '/admin/courses', 1500);
+            } else {
+                const errorText = await response.text();
+                messageDiv.innerHTML = `<div class="alert alert-danger">Error: ${response.status}. ${errorText.substring(0, 100)}</div>`;
+            }
+
+        } catch (error) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Network error creating course.</div>';
+            console.error('Create error:', error);
+        }
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Course List</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-5">
+    <h2>All Courses (ADMIN View)</h2>
+    <p><a href="/welcome.html">Back to Dashboard</a> | <a href="/admin/courses/new" class="btn btn-success btn-sm">Add New Course</a></p>
+
+    <table class="table table-striped mt-4">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Title</th>
+                <th>Formateur</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="courseList">
+            <tr><td colspan="5" class="text-center">Loading courses...</td></tr>
+        </tbody>
+    </table>
+    <div id="message" class="mt-3"></div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', fetchCourses);
+
+    async function fetchCourses() {
+        const listBody = document.getElementById('courseList');
+        const messageDiv = document.getElementById('message');
+        
+        try {
+            // Note: This relies on the security config allowing ADMIN to access GET /cours/
+            const response = await fetch('/cours/', { credentials: 'include' });
+
+            if (response.ok) {
+                const courses = await response.json();
+                listBody.innerHTML = ''; // Clear loading message
+
+                if (courses.length === 0) {
+                    listBody.innerHTML = '<tr><td colspan="5" class="text-center">No courses found.</td></tr>';
+                    return;
+                }
+                
+                courses.forEach(c => {
+                    const row = listBody.insertRow();
+                    row.insertCell().textContent = c.code;
+                    row.insertCell().textContent = c.titre;
+                    // Check if formateur is present before accessing properties
+                    row.insertCell().textContent = c.formateur ? c.formateur.nom : 'Unassigned';
+                    row.insertCell().textContent = c.actif ? 'Active' : 'Inactive';
+                    row.insertCell().innerHTML = `<a href="/admin/courses/edit/${c.code}" class="btn btn-sm btn-info">Edit</a>`;
+                });
+            } else {
+                messageDiv.innerHTML = `<div class="alert alert-danger">Error loading courses. Status: ${response.status}. Access Denied?</div>`;
+                listBody.innerHTML = '';
+            }
+
+        } catch (error) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Network error fetching courses.</div>';
+            console.error('Fetch error:', error);
+        }
+    }
+    row.insertCell().innerHTML = `
+        <a href="/admin/courses/edit/${c.code}" class="btn btn-sm btn-info">Edit</a>
+        <button onclick="deleteCourse('${c.code}')" class="btn btn-sm btn-danger">Delete</button>
+    `;
+    
+    // --- NEW: Deletion Function ---
+    async function deleteCourse(code) {
+        if (!confirm(`Are you sure you want to delete course ${code}?`)) {
+            return;
+        }
+
+        const messageDiv = document.getElementById('message');
+        try {
+            const response = await fetch(`/cours/${code}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+
+            if (response.status === 204) { // NO_CONTENT
+                messageDiv.innerHTML = '<div class="alert alert-success">Course deleted successfully.</div>';
+                fetchCourses(); // Reload the list
+            } else if (response.status === 404) {
+                messageDiv.innerHTML = '<div class="alert alert-warning">Course not found.</div>';
+            } else {
+                // Handle foreign key constraint failure or other server error
+                const errorText = await response.text();
+                messageDiv.innerHTML = `<div class="alert alert-danger">Error deleting course. Status: ${response.status}. ${errorText.substring(0, 100)}</div>`;
+            }
+
+        } catch (error) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Network error during deletion.</div>';
+            console.error('Delete error:', error);
+        }
+    }
+</script>

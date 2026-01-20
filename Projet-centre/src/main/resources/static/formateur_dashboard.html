@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Formateur Dashboard</title>
+    <style>
+        .container { max-width: 900px; margin: 30px auto; }
+        h2, h3 { color: #1f7a8c; }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .no-data { text-align: center; color: #888; padding: 16px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>My Teaching Overview</h2>
+    <p id="message" style="color: red;"></p>
+
+    <h3>My Courses</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Titre</th>
+            </tr>
+        </thead>
+        <tbody id="coursesList">
+            <tr><td colspan="2" class="no-data">Loading...</td></tr>
+        </tbody>
+    </table>
+
+    <h3>My Seances</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Heure</th>
+                <th>Salle</th>
+                <th>Cours</th>
+                <th>Groupe</th>
+            </tr>
+        </thead>
+        <tbody id="seancesList">
+            <tr><td colspan="5" class="no-data">Loading...</td></tr>
+        </tbody>
+    </table>
+
+    <h3>My Groupes</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Nom</th>
+                <th>Session</th>
+                <th>Specialite</th>
+            </tr>
+        </thead>
+        <tbody id="groupesList">
+            <tr><td colspan="3" class="no-data">Loading...</td></tr>
+        </tbody>
+    </table>
+
+    <p style="margin-top: 30px;">
+        <a href="/welcome.html">Back to Dashboard</a>
+    </p>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', fetchData);
+
+    async function fetchData() {
+        try {
+            await Promise.all([loadCourses(), loadSeances(), loadGroupes()]);
+        } catch (e) {
+            document.getElementById('message').textContent = 'Failed to load data.';
+        }
+    }
+
+    async function loadCourses() {
+        const body = document.getElementById('coursesList');
+        const res = await fetch('/formateurs/me/cours', { credentials: 'include' });
+        if (!res.ok) {
+            body.innerHTML = '<tr><td colspan="2" class="no-data">Access denied.</td></tr>';
+            return;
+        }
+        const courses = await res.json();
+        body.innerHTML = '';
+        if (courses.length === 0) {
+            body.innerHTML = '<tr><td colspan="2" class="no-data">No courses.</td></tr>';
+            return;
+        }
+        courses.forEach(c => {
+            const row = body.insertRow();
+            row.insertCell().textContent = c.code;
+            row.insertCell().textContent = c.titre;
+        });
+    }
+
+    async function loadSeances() {
+        const body = document.getElementById('seancesList');
+        const res = await fetch('/formateurs/me/seances', { credentials: 'include' });
+        if (!res.ok) {
+            body.innerHTML = '<tr><td colspan="5" class="no-data">Access denied.</td></tr>';
+            return;
+        }
+        const seances = await res.json();
+        body.innerHTML = '';
+        if (seances.length === 0) {
+            body.innerHTML = '<tr><td colspan="5" class="no-data">No seances.</td></tr>';
+            return;
+        }
+        seances.forEach(s => {
+            const row = body.insertRow();
+            row.insertCell().textContent = s.dateSeance || '';
+            row.insertCell().textContent = s.heureDebut && s.heureFin ? `${s.heureDebut} - ${s.heureFin}` : '';
+            row.insertCell().textContent = s.salle || '';
+            row.insertCell().textContent = s.cours ? `${s.cours.code} - ${s.cours.titre}` : '';
+            row.insertCell().textContent = s.groupe ? s.groupe.nom : '-';
+        });
+    }
+
+    async function loadGroupes() {
+        const body = document.getElementById('groupesList');
+        const res = await fetch('/formateurs/me/groupes', { credentials: 'include' });
+        if (!res.ok) {
+            body.innerHTML = '<tr><td colspan="3" class="no-data">Access denied.</td></tr>';
+            return;
+        }
+        const groupes = await res.json();
+        body.innerHTML = '';
+        if (groupes.length === 0) {
+            body.innerHTML = '<tr><td colspan="3" class="no-data">No groupes.</td></tr>';
+            return;
+        }
+        groupes.forEach(g => {
+            const row = body.insertRow();
+            row.insertCell().textContent = g.nom;
+            row.insertCell().textContent = g.session ? `${g.session.id} - ${g.session.anneeScolaire} (S${g.session.semestre})` : '-';
+            row.insertCell().textContent = g.specialite ? g.specialite.nom : '-';
+        });
+    }
+</script>
+</body>
+</html>

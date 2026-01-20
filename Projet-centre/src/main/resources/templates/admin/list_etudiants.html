@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage All Students</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-5">
+    <h2>All Students (ADMIN View)</h2>
+    <p><a href="/welcome.html">Back to Dashboard</a> | <a href="/admin/etudiants/new" class="btn btn-success btn-sm">Add New Student</a></p>
+
+    <table class="table table-striped mt-4">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Matricule</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Date Inscription</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="studentList">
+            <tr><td colspan="6" class="text-center">Loading students...</td></tr>
+        </tbody>
+    </table>
+    <div id="message" class="mt-3"></div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', fetchStudents);
+
+    async function fetchStudents() {
+        const listBody = document.getElementById('studentList');
+        const messageDiv = document.getElementById('message');
+        
+        try {
+            // Fetch ALL students using the ADMIN-only endpoint
+            const response = await fetch('/etudiants/', { credentials: 'include' });
+
+            if (response.ok) {
+                const students = await response.json();
+                listBody.innerHTML = ''; // Clear loading message
+
+                if (students.length === 0) {
+                    listBody.innerHTML = '<tr><td colspan="6" class="text-center">No students found.</td></tr>';
+                    return;
+                }
+                
+                students.forEach(e => {
+                    const row = listBody.insertRow();
+                    row.insertCell().textContent = e.id;
+                    row.insertCell().textContent = e.matricule;
+                    row.insertCell().textContent = `${e.nom} ${e.prenom}`;
+                    row.insertCell().textContent = e.email;
+                    
+                    const date = e.dateInscription ? new Date(e.dateInscription).toLocaleDateString() : 'N/A';
+                    row.insertCell().textContent = date;
+                    
+                    row.insertCell().innerHTML = `
+                        <a href="/admin/etudiants/edit/${e.id}" class="btn btn-sm btn-info">Edit</a>
+                        <button onclick="deleteStudent(${e.id})" class="btn btn-sm btn-danger">Delete</button>
+                    `;
+                });
+            } else {
+                messageDiv.innerHTML = `<div class="alert alert-danger">Error loading students. Status: ${response.status}. Access Denied?</div>`;
+                listBody.innerHTML = '';
+            }
+
+        } catch (error) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Network error fetching students.</div>';
+            console.error('Fetch error:', error);
+        }
+    }
+    
+    // Placeholder for DELETE functionality
+    async function deleteStudent(id) {
+        if (!confirm(`Are you sure you want to delete student ID ${id}?`)) return;
+
+        try {
+            // Note: Use the secure endpoint DELETE /etudiants/{id} (or similar)
+            const response = await fetch(`/etudiants/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+
+            if (response.status === 204 || response.ok) { // 204 No Content is typical for DELETE
+                alert('Student deleted successfully.');
+                fetchStudents(); // Refresh the list
+            } else {
+                alert('Deletion failed.');
+            }
+        } catch (error) {
+            console.error('Deletion error:', error);
+            alert('Network error during deletion.');
+        }
+    }
+</script>
+
+</body>
+</html>

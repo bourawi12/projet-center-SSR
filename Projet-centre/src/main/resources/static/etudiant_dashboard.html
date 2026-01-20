@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Dashboard</title>
+    <style>
+        .container { max-width: 900px; margin: 30px auto; }
+        h2, h3 { color: #007bff; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .no-data { text-align: center; color: #888; padding: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>My Academic Overview</h2>
+    <p id="message" style="color: red;"></p>
+    
+    <div id="loadingMessage">Loading your data...</div>
+    
+    <h3>Enrolled Courses & Grades</h3>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Date Enrollment</th>
+                <th>Course Code</th>
+                <th>Course Title</th>
+                <th>Examen</th>
+            </tr>
+        </thead>
+        <tbody id="inscriptionList">
+            </tbody>
+    </table>
+    
+    <p style="margin-top: 30px;">
+        <a href="/welcome.html">Back to Dashboard</a>
+    </p>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', fetchStudentData);
+
+    async function fetchStudentData() {
+        const messageElement = document.getElementById('message');
+        const listBody = document.getElementById('inscriptionList');
+        const loadingMessage = document.getElementById('loadingMessage');
+
+        try {
+            const [inscriptionResponse, notesResponse] = await Promise.all([
+                fetch('/inscriptions/', { credentials: 'include' }),
+                fetch('/notes/', { credentials: 'include' })
+            ]);
+
+            loadingMessage.style.display = 'none';
+
+            if (inscriptionResponse.ok) {
+                const inscriptions = await inscriptionResponse.json();
+                const notes = notesResponse.ok ? await notesResponse.json() : [];
+                const notesByCourse = new Map();
+                notes.forEach(n => {
+                    if (n.cours && n.cours.code) {
+                        notesByCourse.set(n.cours.code, n);
+                    }
+                });
+
+                if (inscriptions.length === 0) {
+                    listBody.innerHTML = '<tr><td colspan="6" class="no-data">You are not enrolled in any courses yet.</td></tr>';
+                    return;
+                }
+
+                inscriptions.forEach(insc => {
+                    const row = listBody.insertRow();
+                    const course = insc.cours;
+                    const date = insc.dateInscription ? new Date(insc.dateInscription).toLocaleDateString() : 'N/A';
+
+                    row.insertCell().textContent = date;
+                    row.insertCell().textContent = course.code;
+                    row.insertCell().textContent = course.titre;
+
+                    const note = notesByCourse.get(course.code);
+                    row.insertCell().textContent = note ? note.noteExamen : '-';
+                    row.insertCell().textContent = note ? note.noteDs : '-';
+                    row.insertCell().textContent = note ? note.noteOral : '-';
+                });
+            } else if (inscriptionResponse.status === 403 || inscriptionResponse.status === 401) {
+                messageElement.textContent = 'Session expired or access denied. Redirecting...';
+                window.location.href = '/login.html';
+            } else {
+                const errorBody = await inscriptionResponse.text();
+                messageElement.textContent = `Error: Could not load enrollment data (Status: ${inscriptionResponse.status}).`;
+                console.error('API Error:', errorBody);
+            }
+        } catch (error) {
+            loadingMessage.style.display = 'none';
+            messageElement.textContent = 'Network error while fetching your courses. Please try again.';
+            console.error('Fetch error:', error);
+        }
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Schedule</title>
+    <style>
+        .container { max-width: 900px; margin: 30px auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>My Schedule</h2>
+    <p><a href="/welcome.html">Back to Dashboard</a></p>
+    <div id="message" style="color:red;"></div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Heure</th>
+                <th>Salle</th>
+                <th>Cours</th>
+                <th>Groupe</th>
+            </tr>
+        </thead>
+        <tbody id="seanceList">
+            <tr><td colspan="5" class="text-center">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', fetchSchedule);
+
+    async function fetchSchedule() {
+        const listBody = document.getElementById('seanceList');
+        const messageDiv = document.getElementById('message');
+        try {
+            const response = await fetch('/seances/etudiant/me', { credentials: 'include' });
+            if (response.ok) {
+                const seances = await response.json();
+                listBody.innerHTML = '';
+                if (seances.length === 0) {
+                    listBody.innerHTML = '<tr><td colspan="5" class="text-center">No seances found.</td></tr>';
+                    return;
+                }
+                seances.forEach(s => {
+                    const row = listBody.insertRow();
+                    row.insertCell().textContent = s.dateSeance;
+                    row.insertCell().textContent = `${s.heureDebut} - ${s.heureFin}`;
+                    row.insertCell().textContent = s.salle;
+                    row.insertCell().textContent = s.cours ? `${s.cours.code} - ${s.cours.titre}` : '';
+                    row.insertCell().textContent = s.groupe ? s.groupe.nom : '';
+                });
+            } else if (response.status === 401 || response.status === 403) {
+                messageDiv.textContent = 'Access denied. Please login again.';
+            } else {
+                messageDiv.textContent = `Error loading schedule: ${response.status}`;
+            }
+        } catch (error) {
+            messageDiv.textContent = 'Network error.';
+        }
+    }
+</script>
+</body>
+</html>

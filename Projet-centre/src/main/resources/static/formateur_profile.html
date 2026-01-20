@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Profile (Formateur)</title>
+    <style>
+        .container { max-width: 700px; margin: 30px auto; }
+        label { display: block; margin-top: 12px; }
+        input { width: 100%; padding: 8px; margin-top: 4px; }
+        button { margin-top: 16px; padding: 10px 16px; }
+        .message { margin-top: 12px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>My Profile</h2>
+    <p><a href="/welcome.html">Back to Dashboard</a></p>
+
+    <div id="message" class="message"></div>
+
+    <form id="profileForm">
+        <label for="nom">Nom</label>
+        <input id="nom" type="text" required>
+
+        <label for="prenom">Prenom</label>
+        <input id="prenom" type="text" required>
+
+        <label for="email">Email (Login)</label>
+        <input id="email" type="email" required>
+
+        <label for="password">New Password (optional)</label>
+        <input id="password" type="password" placeholder="Leave blank to keep current password">
+
+        <button type="submit">Save Changes</button>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', loadProfile);
+    document.getElementById('profileForm').addEventListener('submit', saveProfile);
+
+    async function loadProfile() {
+        const message = document.getElementById('message');
+        try {
+            const response = await fetch('/formateurs/me', { credentials: 'include' });
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('nom').value = data.nom || '';
+                document.getElementById('prenom').value = data.prenom || '';
+                document.getElementById('email').value = data.email || '';
+            } else if (response.status === 401 || response.status === 403) {
+                window.location.href = '/login.html';
+            } else {
+                message.textContent = 'Failed to load profile.';
+            }
+        } catch (e) {
+            message.textContent = 'Network error while loading profile.';
+        }
+    }
+
+    async function saveProfile(e) {
+        e.preventDefault();
+        const message = document.getElementById('message');
+        message.textContent = '';
+
+        const payload = {
+            nom: document.getElementById('nom').value.trim(),
+            prenom: document.getElementById('prenom').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            password: document.getElementById('password').value
+        };
+
+        try {
+            const response = await fetch('/formateurs/me', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                message.textContent = 'Profile updated.';
+                document.getElementById('password').value = '';
+            } else {
+                const text = await response.text();
+                message.textContent = text || 'Update failed.';
+            }
+        } catch (e) {
+            message.textContent = 'Network error while saving profile.';
+        }
+    }
+</script>
+</body>
+</html>

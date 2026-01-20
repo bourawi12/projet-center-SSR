@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Specialites</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-5">
+    <h2>Specialites</h2>
+    <p><a href="/welcome.html">Back to Dashboard</a></p>
+
+    <form id="specialiteForm" class="mb-4">
+        <div class="form-row">
+            <div class="form-group col-md-4">
+                <label for="nom">Nom</label>
+                <input type="text" class="form-control" id="nom" required>
+            </div>
+            <div class="form-group col-md-6">
+                <label for="description">Description</label>
+                <input type="text" class="form-control" id="description">
+            </div>
+            <div class="form-group col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary">Add</button>
+            </div>
+        </div>
+    </form>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nom</th>
+                <th>Description</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="specialiteList">
+            <tr><td colspan="4" class="text-center">Loading...</td></tr>
+        </tbody>
+    </table>
+    <div id="message" class="mt-3"></div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', fetchSpecialites);
+    document.getElementById('specialiteForm').addEventListener('submit', createSpecialite);
+
+    async function fetchSpecialites() {
+        const listBody = document.getElementById('specialiteList');
+        const messageDiv = document.getElementById('message');
+        try {
+            const response = await fetch('/specialites/', { credentials: 'include' });
+            if (response.ok) {
+                const items = await response.json();
+                listBody.innerHTML = '';
+                if (items.length === 0) {
+                    listBody.innerHTML = '<tr><td colspan="4" class="text-center">No specialites found.</td></tr>';
+                    return;
+                }
+                items.forEach(s => {
+                    const row = listBody.insertRow();
+                    row.insertCell().textContent = s.id;
+                    row.insertCell().textContent = s.nom;
+                    row.insertCell().textContent = s.description || '';
+                    row.insertCell().innerHTML = `
+                        <button class="btn btn-sm btn-danger" onclick="deleteSpecialite(${s.id})">Delete</button>
+                    `;
+                });
+            } else {
+                messageDiv.innerHTML = `<div class="alert alert-danger">Error loading specialites. Status: ${response.status}</div>`;
+            }
+        } catch (error) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Network error.</div>';
+        }
+    }
+
+    async function createSpecialite(e) {
+        e.preventDefault();
+        const messageDiv = document.getElementById('message');
+        const payload = {
+            nom: document.getElementById('nom').value,
+            description: document.getElementById('description').value
+        };
+        try {
+            const response = await fetch('/specialites/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                credentials: 'include'
+            });
+            if (response.ok) {
+                messageDiv.innerHTML = '<div class="alert alert-success">Specialite added.</div>';
+                document.getElementById('nom').value = '';
+                document.getElementById('description').value = '';
+                fetchSpecialites();
+            } else {
+                const errorText = await response.text();
+                messageDiv.innerHTML = `<div class="alert alert-danger">Creation failed: ${errorText || 'Server error'}</div>`;
+            }
+        } catch (error) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Network error.</div>';
+        }
+    }
+
+    async function deleteSpecialite(id) {
+        if (!confirm('Delete this specialite?')) return;
+        const messageDiv = document.getElementById('message');
+        try {
+            const response = await fetch(`/specialites/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            if (response.status === 204) {
+                messageDiv.innerHTML = '<div class="alert alert-success">Specialite deleted.</div>';
+                fetchSpecialites();
+            } else {
+                const errorText = await response.text();
+                messageDiv.innerHTML = `<div class="alert alert-danger">Delete failed: ${errorText || 'Server error'}</div>`;
+            }
+        } catch (error) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Network error.</div>';
+        }
+    }
+</script>
+</body>
+</html>

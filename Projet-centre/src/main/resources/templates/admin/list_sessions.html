@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sessions Pedagogiques</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-5">
+    <h2>Sessions Pedagogiques</h2>
+    <p><a href="/welcome.html">Back to Dashboard</a></p>
+
+    <form id="sessionForm" class="mb-4">
+        <div class="form-row">
+            <div class="form-group col-md-4">
+                <label for="semestre">Semestre</label>
+                <input type="text" class="form-control" id="semestre" required>
+            </div>
+            <div class="form-group col-md-4">
+                <label for="anneeScolaire">Annee Scolaire</label>
+                <input type="text" class="form-control" id="anneeScolaire" placeholder="2025/2026" required>
+            </div>
+            <div class="form-group col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary">Add</button>
+            </div>
+        </div>
+    </form>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Semestre</th>
+                <th>Annee</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="sessionList">
+            <tr><td colspan="4" class="text-center">Loading...</td></tr>
+        </tbody>
+    </table>
+    <div id="message" class="mt-3"></div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', fetchSessions);
+    document.getElementById('sessionForm').addEventListener('submit', createSession);
+
+    async function fetchSessions() {
+        const listBody = document.getElementById('sessionList');
+        const messageDiv = document.getElementById('message');
+        try {
+            const response = await fetch('/sessions/', { credentials: 'include' });
+            if (response.ok) {
+                const sessions = await response.json();
+                listBody.innerHTML = '';
+                if (sessions.length === 0) {
+                    listBody.innerHTML = '<tr><td colspan="4" class="text-center">No sessions found.</td></tr>';
+                    return;
+                }
+                sessions.forEach(s => {
+                    const row = listBody.insertRow();
+                    row.insertCell().textContent = s.id;
+                    row.insertCell().textContent = s.semestre;
+                    row.insertCell().textContent = s.anneeScolaire;
+                    row.insertCell().innerHTML = `
+                        <button class="btn btn-sm btn-danger" onclick="deleteSession(${s.id})">Delete</button>
+                    `;
+                });
+            } else {
+                messageDiv.innerHTML = `<div class="alert alert-danger">Error loading sessions. Status: ${response.status}</div>`;
+            }
+        } catch (error) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Network error.</div>';
+        }
+    }
+
+    async function createSession(e) {
+        e.preventDefault();
+        const messageDiv = document.getElementById('message');
+        const payload = {
+            semestre: document.getElementById('semestre').value,
+            anneeScolaire: document.getElementById('anneeScolaire').value
+        };
+        try {
+            const response = await fetch('/sessions/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                credentials: 'include'
+            });
+            if (response.ok) {
+                messageDiv.innerHTML = '<div class="alert alert-success">Session added.</div>';
+                document.getElementById('semestre').value = '';
+                document.getElementById('anneeScolaire').value = '';
+                fetchSessions();
+            } else {
+                const errorText = await response.text();
+                messageDiv.innerHTML = `<div class="alert alert-danger">Creation failed: ${errorText || 'Server error'}</div>`;
+            }
+        } catch (error) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Network error.</div>';
+        }
+    }
+
+    async function deleteSession(id) {
+        if (!confirm('Delete this session?')) return;
+        const messageDiv = document.getElementById('message');
+        try {
+            const response = await fetch(`/sessions/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            if (response.status === 204) {
+                messageDiv.innerHTML = '<div class="alert alert-success">Session deleted.</div>';
+                fetchSessions();
+            } else {
+                const errorText = await response.text();
+                messageDiv.innerHTML = `<div class="alert alert-danger">Delete failed: ${errorText || 'Server error'}</div>`;
+            }
+        } catch (error) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Network error.</div>';
+        }
+    }
+</script>
+</body>
+</html>

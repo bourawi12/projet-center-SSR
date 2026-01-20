@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Signup</title>
+    <style>
+        .role-specific {
+            display: none; /* Hide these by default */
+        }
+    </style>
+</head>
+<body>
+<h2>Signup</h2>
+
+<form id="signupForm">
+    <input name="password" type="password" placeholder="Password" required/><br/>
+    
+    <input name="nom" placeholder="Nom (Last Name)" required/><br/>
+    <input name="prenom" placeholder="Prénom (First Name)" required/><br/>
+    <input name="email" type="email" placeholder="Email (Used for Login)" required/><br/>
+
+    <select name="role" id="roleSelect">
+        <option value="ETUDIANT">Etudiant</option>
+        <option value="FORMATEUR">Formateur</option>
+        <option value="ADMIN">Admin</option>
+    </select><br/>
+
+    <div id="etudiantFields" class="role-specific">
+        </div>
+
+    <div id="formateurFields" class="role-specific">
+        <input name="specialite" placeholder="Spécialité (Specialty)" /><br/>
+    </div>
+
+    <button type="submit">Signup</button>
+</form>
+
+<script>
+    const roleSelect = document.getElementById('roleSelect');
+    const etudiantFields = document.getElementById('etudiantFields');
+    const formateurFields = document.getElementById('formateurFields');
+
+    function toggleRoleFields() {
+        const role = roleSelect.value;
+        
+        // Hide all specific fields first
+        etudiantFields.style.display = 'none';
+        formateurFields.style.display = 'none';
+        
+        // Since only specialite is left, we only manage its requirement
+        const specialiteInput = document.querySelector('#formateurFields input');
+        if (specialiteInput) {
+             specialiteInput.removeAttribute('required');
+        }
+
+        if (role === 'ETUDIANT') {
+            etudiantFields.style.display = 'block';
+            // No fields to make required for Etudiant here, as Matricule is auto-generated
+        } else if (role === 'FORMATEUR') {
+            formateurFields.style.display = 'block';
+             if (specialiteInput) {
+                specialiteInput.setAttribute('required', 'required');
+            }
+        }
+    }
+
+    // Initial setup and event listener
+    roleSelect.addEventListener('change', toggleRoleFields);
+    toggleRoleFields(); 
+
+    document.getElementById('signupForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const data = Object.fromEntries(new FormData(this));
+
+        // Cleanup fields that are not relevant to the selected role
+        if (data.role === 'ETUDIANT' || data.role === 'ADMIN') {
+            delete data.specialite; 
+        } 
+        
+        // If role is ADMIN, delete person-specific fields if you don't save them on the User base
+        if (data.role === 'ADMIN') {
+            delete data.nom;
+            delete data.prenom;
+        }
+
+        const response = await fetch('/auth/signup', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+
+        const feedbackElement = this.querySelector('#feedback') || document.createElement('p');
+        feedbackElement.id = 'feedback';
+        feedbackElement.style.color = 'red';
+        
+        if(response.ok) {
+            window.location.href = '/welcome.html';
+        } else {
+            const errorText = await response.text();
+            feedbackElement.textContent = `Signup failed: ${errorText || 'Please check your input and try again.'}`;
+            this.parentNode.insertBefore(feedbackElement, this.nextSibling);
+            console.error('Signup failed with status:', response.status, 'Body:', errorText);
+        }
+    });
+</script>
+</body>
+</html>
